@@ -20,6 +20,59 @@
 
 * [minikube](https://minikube.sigs.k8s.io/docs/start/)
 
+```
+#!/bin/bash
+set -e
+
+echo "🚀 Installing prerequisites..."
+sudo apt update
+sudo apt install -y curl wget git make ca-certificates apt-transport-https gnupg lsb-release golang-go conntrack containernetworking-plugins
+
+echo "🐳 Installing Docker..."
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt update
+sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo usermod -aG docker $USER
+
+echo "📦 Installing crictl..."
+VERSION="v1.29.0"
+curl -LO https://github.com/kubernetes-sigs/cri-tools/releases/download/$VERSION/crictl-$VERSION-linux-amd64.tar.gz
+sudo tar -C /usr/local/bin -xzf crictl-$VERSION-linux-amd64.tar.gz
+rm crictl-$VERSION-linux-amd64.tar.gz
+
+echo "📥 Installing cri-dockerd..."
+mkdir -p ~/cri-bin && cd ~/cri-bin
+wget https://github.com/Mirantis/cri-dockerd/releases/download/v0.3.1/cri-dockerd-0.3.1.amd64.tgz
+tar -xzvf cri-dockerd-0.3.1.amd64.tgz
+sudo mv cri-dockerd/cri-dockerd /usr/local/bin/cri-dockerd
+sudo chmod +x /usr/local/bin/cri-dockerd
+
+cd ~/cri-dockerd
+sudo cp -a packaging/systemd/* /etc/systemd/system
+sudo sed -i 's:/usr/bin/cri-dockerd:/usr/local/bin/cri-dockerd:' /etc/systemd/system/cri-docker.service
+sudo systemctl daemon-reexec
+sudo systemctl daemon-reload
+sudo systemctl enable --now cri-docker.socket
+sudo systemctl enable --now cri-docker.service
+
+echo "🧩 Installing kubeadm, kubelet, kubectl..."
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.33/deb/Release.key | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/kubernetes.gpg
+echo "deb [signed-by=/etc/apt/trusted.gpg.d/kubernetes.gpg] https://pkgs.k8s.io/core:/stable:/v1.33/deb/ /" | sudo tee /etc/apt/sources.list.d/kubernetes.list > /dev/null
+sudo apt update
+sudo apt install -y kubeadm kubelet kubectl
+
+echo "⬇️ Installing Minikube..."
+curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+sudo install minikube-linux-amd64 /usr/local/bin/minikube
+
+echo "🔥 Starting Minikube with driver=none..."
+sudo CHANGE_MINIKUBE_NONE_USER=true minikube start --driver=none
+
+
+```
+
 * 
 # ✅ Minikube Local (Ubuntu 24.04) - Installare cu `--driver=none`
 
