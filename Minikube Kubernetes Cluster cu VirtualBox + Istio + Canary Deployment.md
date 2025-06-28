@@ -236,6 +236,113 @@ minikube delete
 
 ---
 
+
+
+# 🧠 Kubernetes Control Plane & System Components (Minikube Explained)
+
+Acest `README.md` explică toate componentele Kubernetes vizibile într-un cluster local pornit cu Minikube (`--driver=none`), utile pentru începători și pentru interviuri DevOps.
+
+---
+
+## 📍 `kubectl get nodes`
+
+```
+petrisor@petrisor:~$ kubectl get pods -A
+NAME       STATUS   ROLES           AGE   VERSION
+petrisor   Ready    control-plane   44s   v1.33.1
+
+NAMESPACE     NAME                               READY   STATUS    RESTARTS   AGE
+kube-system   coredns-674b8bbfcf-xc5qk           1/1     Running   0          36s
+kube-system   etcd-petrisor                      1/1     Running   0          41s
+kube-system   kube-apiserver-petrisor            1/1     Running   0          41s
+kube-system   kube-controller-manager-petrisor   1/1     Running   0          41s
+kube-system   kube-proxy-fkr6d                   1/1     Running   0          36s
+kube-system   kube-scheduler-petrisor            1/1     Running   0          43s
+kube-system   storage-provisioner                1/1     Running   0          39s
+```
+
+- **`petrisor`** – numele nodului tău (local)
+- **`control-plane`** – acest nod rulează toate componentele de orchestrare (nu doar workload-uri)
+
+---
+
+## 📍 `kubectl get pods -A` – explicat componentă cu componentă
+
+### 🔹 1. kube-apiserver-<hostname>
+
+- Piesa centrală a control-plane-ului
+- Primește comenzi de la `kubectl`, dashboard sau aplicații externe
+- Expune API REST
+- Comunicarea internă între componente tot prin API Server se face
+
+### 🔹 2. etcd-<hostname>
+
+- Baza de date **key-value** unde se salvează **toată starea clusterului**
+- Ex: ce poduri rulează, ce deployments există, ce configmaps sau secrets sunt definite
+- Este un serviciu critic — fără el, clusterul „uită” tot
+
+### 🔹 3. kube-controller-manager-<hostname>
+
+- Rulează toate „control loop”-urile (verifică și reface starea dorită)
+- Ex: dacă un deployment are 3 replici și unul pică, el recreează podul
+- Alte controale: job-uri, replicaset, garbage collection etc.
+
+### 🔹 4. kube-scheduler-<hostname>
+
+- Decide pe ce nod se lansează fiecare nou pod
+- Ține cont de:
+  - resurse disponibile (CPU/RAM)
+  - afinități și taints
+  - zone de disponibilitate
+
+### 🔹 5. kube-proxy-xxxxx
+
+- Se ocupă de **routing-ul traficului intern** între poduri și servicii
+- Creează `iptables`/`ipvs` pentru fiecare `Service`
+- Rulează pe fiecare nod (worker sau control-plane)
+
+### 🔹 6. coredns-xxxxx
+
+- DNS intern al clusterului
+- Transformă adrese ca `nginx.default.svc.cluster.local` în IP-uri interne
+- Fiecare pod îl folosește implicit pentru `dnsPolicy: ClusterFirst`
+
+### 🔹 7. storage-provisioner
+
+- În Minikube, creează volume locale temporare
+- Răspunde la cereri de `PersistentVolumeClaim`
+- Simulează dynamic provisioning exact cum ar face AWS EBS, GCP PD etc.
+
+---
+
+## 📊 Rezumat grafic logic
+
+```
++--------------------+         +-----------------------+
+|  kube-apiserver    | <-----> |  etcd (state DB)      |
++--------------------+         +-----------------------+
+        ↑   ↓
++-------------------------+
+| controller-manager      |
+| scheduler               |
++-------------------------+
+        ↓
++-----------------------------+
+| kubelet + kube-proxy (nod) | <---> CoreDNS
++-----------------------------+
+```
+
+---
+
+## 📎 Recomandări pentru învățare
+
+- Rulează `kubectl describe pod -n kube-system <nume>` pentru fiecare componentă
+- Verifică logurile: `kubectl logs -n kube-system <pod>`
+- Testează pierderea unui pod și vezi cum controller-manager îl reface
+
+> Ghid creat pentru învățare locală pe Ubuntu 24.04 + Minikube v1.36.0
+
+
 ## 🚀 2. Creează un cluster Minikube cu VirtualBox
 
 ```bash
