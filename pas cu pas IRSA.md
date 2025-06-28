@@ -146,3 +146,86 @@ eksctl utils associate-iam-oidc-provider \
 ```
 [POD] → [SA cu rol IAM] → [STS] → [AssumeRoleWithWebIdentity] → [IAM Role] → [Resursă AWS (S3, RDS)]
 ```
+
+
+# 🔐 Creare și Asociere OIDC Provider pentru EKS
+
+Acest ghid descrie cum creezi și asociezi un OIDC provider pentru un cluster Amazon EKS, esențial pentru folosirea IRSA (IAM Roles for Service Accounts).
+
+---
+
+## ✅ Variantă rapidă (recomandată) folosind `eksctl`
+
+```bash
+eksctl utils associate-iam-oidc-provider \
+  --region us-east-1 \
+  --cluster eksdemo1 \
+  --approve
+```
+
+### 💬 Ce face această comandă:
+
+- Creează un **OIDC identity provider** în AWS IAM
+- Îl asociază automat cu clusterul EKS (`eksdemo1`)
+- Îl poți vedea în consola AWS:  
+  `IAM → Identity Providers`
+
+ARN-ul arată așa:
+
+```
+arn:aws:iam::975050111127:oidc-provider/oidc.eks.us-east-1.amazonaws.com/id/EXAMPLED6AA
+```
+
+---
+
+## 🔍 Verifică OIDC Provider-ul creat
+
+### 1. Listează toate OIDC providers:
+
+```bash
+aws iam list-open-id-connect-providers
+```
+
+### 2. Detalii pentru un provider anume:
+
+```bash
+aws iam get-open-id-connect-provider \
+  --open-id-connect-provider-arn arn:aws:iam::975050111127:oidc-provider/oidc.eks.us-east-1.amazonaws.com/id/EXAMPLED6AA
+```
+
+---
+
+## ⚙️ Variantă alternativă: crearea manuală a OIDC Provider-ului
+
+### 1. Află URL-ul OIDC al clusterului:
+
+```bash
+aws eks describe-cluster \
+  --name eksdemo1 \
+  --region us-east-1 \
+  --query "cluster.identity.oidc.issuer" \
+  --output text
+```
+
+### 2. Creează providerul manual:
+
+```bash
+aws iam create-open-id-connect-provider \
+  --url https://oidc.eks.us-east-1.amazonaws.com/id/EXAMPLED6AA \
+  --client-id-list sts.amazonaws.com \
+  --thumbprint-list <THUMBPRINT>
+```
+
+> 🔐 `THUMBPRINT` se obține din certificatul TLS al URL-ului OIDC.
+
+ℹ️ Recomandare: **folosește `eksctl`** dacă vrei să eviți complicații legate de `thumbprint`.
+
+---
+
+## 📌 Concluzie
+
+- ✅ Recomandat: `eksctl utils associate-iam-oidc-provider`
+- 🛠️ Manual: `aws iam create-open-id-connect-provider`
+- 🔑 Necesită: URL OIDC, client ID `sts.amazonaws.com`, thumbprint
+
+
