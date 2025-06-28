@@ -303,6 +303,200 @@ istio_requests_total{destination_workload="my-app", destination_version="v2"}
 ```
 
 ---
+# 🐳 Istio + Canary Deployment + Helm + Real App (Node.js)
+
+## 🧠 Ce face această aplicație?
+
+Aceasta este o aplicație Node.js care răspunde cu mesajul:
+
+```
+Hello from version v1
+```
+
+sau
+
+```
+Hello from version v2
+```
+
+în funcție de variabila de mediu `VERSION`. Este ideală pentru Canary Deployment și generare de trafic cu Fortio.
+
+---
+
+## 📦 Structura Helm Chart
+
+```
+helm-canary-app/
+├── Chart.yaml
+├── values.yaml
+└── templates/
+    ├── deployment.yaml
+    ├── service.yaml
+    ├── destinationrule.yaml
+    └── virtualservice.yaml
+```
+
+---
+
+## 1️⃣ Codul aplicației (Node.js)
+
+**📄 app.js**
+
+```javascript
+const express = require('express');
+const app = express();
+
+const version = process.env.VERSION || 'v1';
+
+app.get('/', (req, res) => {
+  res.send(`Hello from version ${version}`);
+});
+
+const port = process.env.PORT || 8080;
+app.listen(port, () => {
+  console.log(`Listening on port ${port}`);
+});
+```
+
+---
+
+## 2️⃣ Dockerfile
+
+**📄 Dockerfile**
+
+```Dockerfile
+FROM node:18
+WORKDIR /app
+COPY app.js .
+RUN npm init -y && npm install express
+ENV VERSION=v1
+CMD ["node", "app.js"]
+```
+
+---
+
+## 3️⃣ Helm Chart
+
+### 📄 Chart.yaml
+
+```yaml
+apiVersion: v2
+name: canary-app
+version: 0.1.0
+```
+
+---
+
+### 📄 values.yaml
+
+```yaml
+app:
+  name: canary-app
+  image:
+    repository: your-dockerhub-user/canary-app
+    tag: v1
+  port: 8080
+  version: v1
+```
+
+---
+
+### 📄 templates/deployment.yaml
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.app.name }}-{{ .Values.app.version }}
+  labels:
+    app: {{ .Values.app.name }}
+    version: {{ .Values.app.version }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Values.app.name }}
+      version: {{ .Values.app.version }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.app.name }}
+        version: {{ .Values.app.version }}
+    spec:
+      containers:
+        - name: {{ .Values.app.name }}
+          image: "{{ .Values.app.image.repository }}:{{ .Values.app.image.tag }}"
+          ports:
+            - containerPort: {{ .Values.app.port }}
+          env:
+            - name: VERSION
+              value: "{{ .Values.app.version }}"
+```
+
+---
+
+### 📄 templates/service.yaml
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.app.name }}
+spec:
+  selector:
+    app: {{ .Values.app.name }}
+  ports:
+    - port: 80
+      targetPort: {{ .Values.app.port }}
+```
+
+---
+
+### 📄 templates/destinationrule.yaml
+
+```yaml
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: {{ .Values.app.name }}
+spec:
+  host: {{ .Values.app.name }}
+  subsets:
+    - name: v1
+      labels:
+        version: v1
+    - name: v2
+      labels:
+        version: v2
+```
+
+---
+
+### 📄 templates/virtualservice.yaml
+
+```yaml
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: {{ .Values.app.name }}
+spec:
+  hosts:
+    - "*"
+  gateways:
+    - istio-system/ingressgateway
+  http:
+    - route:
+        - destination:
+            host: {{ .Values.app.name }}
+            subset: v1
+          weight: 90
+        - destination:
+            host: {{ .Values.app.name }}
+            subset: v2
+          weight: 10
+```
+
+
 
 ## 📌 TL;DR pentru interviu
 
