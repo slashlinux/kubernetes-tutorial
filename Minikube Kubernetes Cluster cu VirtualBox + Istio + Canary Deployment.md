@@ -17,6 +17,10 @@
 * [VirtualBox](https://www.virtualbox.org/wiki/Downloads)
 * [kubectl](https://kubernetes.io/docs/tasks/tools/)
 
+
+* [minikube](https://minikube.sigs.k8s.io/docs/start/)
+
+* 
 # ✅ Minikube Local (Ubuntu 24.04) - Installare cu `--driver=none`
 
 Acest ghid conține **toate comenzile reale testate** pentru instalarea și rularea Minikube cu driver `none` pe Ubuntu 24.04 într-un mediu fără VirtualBox sau KVM.
@@ -175,8 +179,6 @@ minikube delete
 ---
 
 > Ghid creat pe baza instalării reale pe Ubuntu 24.04 (driver none, fără VM, fără VirtualBox).
-
-* [minikube](https://minikube.sigs.k8s.io/docs/start/)
 * [istioctl](https://istio.io/latest/docs/setup/getting-started/#download)
 
 ---
