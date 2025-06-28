@@ -1,3 +1,118 @@
+# 🛠️ Acces PostgreSQL și S3 dintr-o Aplicație în Kubernetes (EKS)
+
+Acest document oferă o soluție completă pentru o aplicație (microserviciu) care rulează într-un pod Kubernetes (EKS) și trebuie să citească/scrie date în:
+
+- ✅ o bază de date PostgreSQL
+- ✅ un bucket S3
+
+---
+
+## 🔹 1. PostgreSQL (persistent database)
+
+### A. Dacă e gestionat (recomandat): **Amazon RDS for PostgreSQL**
+
+Provisionare:
+
+- Creezi un RDS PostgreSQL cu Terraform sau AWS Console.
+- Alegi subnet group **privat**, Security Group (SG) cu acces **doar din EKS**.
+- Activezi **IAM authentication** dacă vrei să eviți hardcodarea user/parolă.
+
+### B. Acces din Pod Kubernetes
+
+Folosești `Secrets` sau `AWS Secrets Manager` sincronizat:
+
+- Variabile necesare: `DB_HOST`, `DB_USER`, `DB_PASS`, `DB_NAME`, `PORT`
+- Configurezi `ConfigMap` sau `application.yaml`:
+
+```yaml
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST}:${PORT}/${DB_NAME}
+    username: ${DB_USER}
+    password: ${DB_PASS}
+```
+
+### C. Network
+
+- EKS și RDS trebuie să fie în aceeași VPC (sau conectate prin peering).
+- SG de la RDS permite acces doar din SG asociat podurilor din EKS.
+
+---
+
+## 🔹 2. S3 Bucket (pentru fișiere, imagini, artefacte)
+
+### A. Acces securizat
+
+- Creezi un IAM Role cu permisiuni precise (`s3:GetObject`, `s3:PutObject`)
+- Creezi o policy IAM separată pentru acces la bucket.
+
+### B. IRSA – IAM Role for Service Account
+
+```bash
+eksctl create iamserviceaccount \
+  --name myapp-sa \
+  --namespace my-namespace \
+  --cluster my-eks-cluster \
+  --attach-policy-arn arn:aws:iam::<account-id>:policy/S3AccessPolicy \
+  --approve
+```
+
+### C. Aplici în Helm chart
+
+```yaml
+serviceAccount:
+  name: myapp-sa
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::<account-id>:role/s3-access-role
+```
+
+---
+
+## 🔹 3. La Nivel de Aplicație
+
+- Pentru PostgreSQL:
+  - `spring.datasource.url`, `username`, `password` din secret
+- Pentru S3:
+  - AWS SDK (Java, Python) detectează **automat** role-ul IRSA asociat podului
+
+---
+
+## 🔹 4. Observabilitate și Securitate
+
+- **Logging**: sidecar `CloudWatch` sau `Fluent Bit`
+- **Secret Management**: AWS Secrets Manager sincronizat în K8s
+- **TLS**: `cert-manager` + ACM pentru HTTPS / S3 Secure / DB criptat
+
+---
+
+## 🧩 Variante Alternative
+
+| Context        | Soluție temporară                       |
+|----------------|------------------------------------------|
+| Rapid dev/test | Hardcodare AWS credentials în Secret     |
+| Local dev      | `.aws/credentials` + `aws configure`     |
+
+---
+
+## 💡 Recomandări Importante
+
+- Limite S3 + policy lifecycle management
+- Conexiuni DB (`pool size`) pentru a evita DoS pe RDS
+- IAM policies **least privilege**
+- Pentru IRSA funcțional: `automountServiceAccountToken: true`
+
+---
+
+## ✅ Vrei exemple YAML/Terraform?
+
+Cere explicit și îți pot genera:
+
+- `values.yaml` + `deployment.yaml`
+- Snippet Terraform pentru RDS și IRSA
+
+
+
+
 # Accessing AWS S3, RabbitMQ, and PostgreSQL from Pods in Amazon EKS via OIDC / IRSA
 
 > **Goal** – Provide a battle‑tested, production‑ready workflow showing how Kubernetes pods in an EKS cluster can **read & write** to:
