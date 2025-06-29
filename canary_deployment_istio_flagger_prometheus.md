@@ -456,7 +456,7 @@ spec:
           weight: 10
 ```
 
-✅ argorollout.yaml
+✅ templates/argorollout.yaml
 ```yaml
 apiVersion: argoproj.io/v1alpha1
 kind: Rollout
@@ -505,7 +505,7 @@ spec:
         value: canary-app
 ```
 
-✅ AnalysisTemplate pentru Prometheus
+✅ templates/analysistemplate_prometheus.yaml
 ```yaml
 apiVersion: argoproj.io/v1alpha1
 kind: AnalysisTemplate
