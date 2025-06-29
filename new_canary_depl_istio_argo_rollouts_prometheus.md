@@ -260,26 +260,22 @@ argorollout.yaml
 apiVersion: argoproj.io/v1alpha1
 kind: Rollout
 metadata:
-  name: canary-app-rollout
+  name: demo-rollout
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: canary-app
+      app: demo-rollout
   template:
     metadata:
       labels:
-        app: canary-app
-        version: v2
+        app: demo-rollout
     spec:
       containers:
-      - name: canary-app
-        image: your-dockerhub-user/canary-app:v2
+      - name: nginx
+        image: nginx:1.27
         ports:
-        - containerPort: 8080
-        env:
-        - name: VERSION
-          value: "v2"
+        - containerPort: 80
   strategy:
     canary:
       trafficRouting:
@@ -289,19 +285,13 @@ spec:
             routes:
               - http
           destinationRule:
-            name: canary-app
+            name: demo-rollout
             canarySubsetName: v2
             stableSubsetName: v1
       steps:
         - setWeight: 20
         - pause: {duration: 10s}
         - setWeight: 100
-  analysis:
-    templates:
-      - templateName: success-rate-check
-    args:
-      - name: service
-        value: canary-app
 ```
 ```bash
 kubectl apply -f argorollout.yaml
