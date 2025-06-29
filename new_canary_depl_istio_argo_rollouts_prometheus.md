@@ -227,7 +227,8 @@ helm upgrade --install canary-app ./canary-app
 
 ---
 
-## 7️⃣ AnalysisTemplate Prometheus
+## 7️⃣ analysistemplate_prometheus.yaml
+
 ```yaml
 apiVersion: argoproj.io/v1alpha1
 kind: AnalysisTemplate
@@ -253,7 +254,8 @@ kubectl apply -f analysis-template.yaml
 ---
 
 ## 8️⃣ Creează Rollout
-```yaml
+argorollout.yaml
+```
 apiVersion: argoproj.io/v1alpha1
 kind: Rollout
 metadata:
