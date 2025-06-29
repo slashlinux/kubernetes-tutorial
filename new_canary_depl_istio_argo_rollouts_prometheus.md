@@ -335,10 +335,49 @@ NAME                                     KIND        STATUS         AGE  INFO
       └──□ demo-rollout-f5b46d586-rx48x  Pod         ✔ Running      8s   ready:1/1
 ```
 ---
+✅ Fa port-forward argo-rollouts
+Comandă cu --address:
+```
+kubectl -n argo-rollouts port-forward deployment/argo-rollouts-dashboard 3100:3100 --address 0.0.0.0
 
+```
+✅ Fa port-forward svc/canary-app 8080:80
+Comandă cu --address:
+```
+petrisor@petrisor:~$ kubectl port-forward svc/canary-app 8080:80
+Forwarding from 127.0.0.1:8080 -> 8080
+Forwarding from [::1]:8080 -> 8080
+Handling connection for 8080
+
+petrisor@petrisor:~$ curl http://localhost:8080
+Hello from version v1
+```
+
+✅ Doar dacă vrei să testezi prin gateway-ul Istio extern, comanda:
+Când e nevoie de port-forward pe istio-ingressgateway?
+
+Situație	                                                Trebuie port-forward pe IngressGateway?
+Ai acces la EXTERNAL-IP (din cloud)	                        ❌ Nu, folosești direct acel IP
+Vrei să testezi din local, fără IP public	                ✅ Da
+Testezi direct pe svc/canary-app în cluster	                ❌ Nu, folosești kubectl port-forward svc/canary-app
+
+
+```
+kubectl port-forward -n istio-system svc/istio-ingressgateway 8080:80
+# Ascultă pe toate interfețele (0.0.0.0) ca să poți testa și din afara VM-ului, dacă vrei
+kubectl -n istio-system port-forward svc/istio-ingressgateway \
+  --address 0.0.0.0 8080:80
+
+### îți permite să accesezi aplicația prin Istio Ingress Gateway, adică:
+curl http://localhost:8080
+
+```
 ## 9️⃣ Testează cu Fortio
 ```bash
 kubectl run -n default fortio --image=fortio/fortio -it --rm -- /usr/bin/fortio load -t 60s -qps 5 http://<INGRESS-IP>/
+# Trafic 60 s, 5 request-uri/secundă, prin gateway
+kubectl run fortio-client -n default --image=fortio/fortio -it --rm -- fortio load -t 60s -qps 5 http://localhost:8080
+
 ```
 ```bash
 kubectl get svc istio-ingressgateway -n istio-system
