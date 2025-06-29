@@ -531,3 +531,122 @@ minikube delete
 ---
 
 📦 Gata! Acum ai un cluster Kubernetes local cu Istio și un canary deployment funcțional pentru test!
+
+
+
+# 🚀 Argo Rollouts + Dashboard on Minikube
+
+This README walks you through installing **Argo Rollouts** (controller + UI dashboard) on a running **Minikube** cluster (any driver, including `none`).  
+> Tested on **Minikube v1.36.0** and **Kubernetes v1.33.x**.
+
+---
+
+## 🧰 Prerequisites
+- A running Minikube cluster (`minikube start …`) and `kubectl` configured.
+- Internet access to pull manifests from GitHub releases.
+
+---
+
+## 1️⃣ Create a dedicated namespace
+```bash
+kubectl create namespace argo-rollouts
+```
+
+---
+
+## 2️⃣ Install the Argo Rollouts controller
+```bash
+kubectl apply -n argo-rollouts   -f https://github.com/argoproj/argo-rollouts/releases/latest/download/install.yaml
+```
+
+---
+
+## 3️⃣ Install the Rollouts **Dashboard UI**
+```bash
+kubectl apply -n argo-rollouts   -f https://github.com/argoproj/argo-rollouts/releases/latest/download/dashboard-install.yaml
+```
+*(If you used Helm, the dashboard can be enabled with `--set dashboard.enabled=true` instead.)*
+
+---
+
+## 4️⃣ Verify everything is running
+```bash
+kubectl get pods -n argo-rollouts
+```
+Expected output (pods must be `Running`/`Ready`):
+```
+NAME                                  READY   STATUS    AGE
+rollouts-controller-xxxxxxxxxx        1/1     Running   30s
+argo-rollouts-dashboard-xxxxxxxxxx    1/1     Running   25s
+```
+
+---
+
+## 5️⃣ Expose the Dashboard locally
+```bash
+kubectl -n argo-rollouts   port-forward deployment/argo-rollouts-dashboard 3100:3100
+```
+Then open your browser at **<http://localhost:3100>**.
+
+---
+
+## 6️⃣ (Optional) Try a sample *Rollout*
+Create `rollout-demo.yaml`:
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: demo-nginx
+spec:
+  replicas: 3
+  strategy:
+    canary:
+      steps:
+        - setWeight: 20
+        - pause: {duration: 30s}
+        - setWeight: 100
+  selector:
+    matchLabels:
+      app: demo-nginx
+  template:
+    metadata:
+      labels:
+        app: demo-nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.27
+        ports:
+        - containerPort: 80
+```
+
+Apply it:
+
+```bash
+kubectl apply -f rollout-demo.yaml
+```
+
+Watch rollout status (CLI):
+
+```bash
+kubectl argo rollouts get rollout demo-nginx -w
+```
+
+Or use the **Dashboard** for a visual, pause/resume, or abort.
+
+---
+
+## ℹ️ Useful commands
+
+| Action | Command |
+|--------|---------|
+| Pause a rollout | `kubectl argo rollouts pause demo-nginx` |
+| Resume a rollout | `kubectl argo rollouts resume demo-nginx` |
+| Abort & rollback | `kubectl argo rollouts abort demo-nginx` |
+| Delete everything | `kubectl delete ns argo-rollouts` |
+
+---
+
+Happy progressive delivering! 🎉
+
