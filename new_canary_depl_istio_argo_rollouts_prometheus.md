@@ -196,7 +196,8 @@ spec:
   gateways:
     - istio-system/ingressgateway
   http:
-    - route:
+    - name: http
+      route:
         - destination:
             host: {{ .Values.app.name }}
             subset: v1
@@ -306,6 +307,43 @@ spec:
 kubectl apply -f argorollout.yaml
 ```
 
+
+```
+petrisor@petrisor:~$ helm install canary-app ./canary-app
+NAME: canary-app
+LAST DEPLOYED: Sun Jun 29 15:27:15 2025
+NAMESPACE: default
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+petrisor@petrisor:~$ kubectl get virtualservice
+kubectl argo rollouts get rollout demo-rollout
+NAME         GATEWAYS                          HOSTS   AGE
+canary-app   ["istio-system/ingressgateway"]   ["*"]   8s
+Name:            demo-rollout
+Namespace:       default
+Status:          ◌ Progressing
+Message:         updated replicas are still becoming available
+Strategy:        Canary
+  Step:          3/3
+  SetWeight:     100
+  ActualWeight:  100
+Images:          nginx:1.27 (stable)
+Replicas:
+  Desired:       3
+  Current:       3
+  Updated:       3
+  Ready:         2
+  Available:     2
+
+NAME                                     KIND        STATUS         AGE  INFO
+⟳ demo-rollout                           Rollout     ◌ Progressing  8s   
+└──# revision:1                                                          
+   └──⧉ demo-rollout-f5b46d586           ReplicaSet  ✔ Healthy      8s   stable
+      ├──□ demo-rollout-f5b46d586-8p6bg  Pod         ✔ Running      8s   ready:1/1
+      ├──□ demo-rollout-f5b46d586-ptbfj  Pod         ✔ Running      8s   ready:1/1
+      └──□ demo-rollout-f5b46d586-rx48x  Pod         ✔ Running      8s   ready:1/1
+```
 ---
 
 ## 9️⃣ Testează cu Fortio
