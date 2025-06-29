@@ -323,9 +323,8 @@ Hello from version v2
 
 ---
 
-## 📦 Structura Helm Chart
 
-```
+📁 Structură Helm Chart:
 helm-canary-app/
 ├── Chart.yaml
 ├── values.yaml
@@ -334,18 +333,11 @@ helm-canary-app/
     ├── service.yaml
     ├── destinationrule.yaml
     └── virtualservice.yaml
-```
 
----
-
-## 1️⃣ Codul aplicației (Node.js)
-
-**📄 app.js**
-
-```javascript
+✅ Codul aplicației (Node.js):
+```js
 const express = require('express');
 const app = express();
-
 const version = process.env.VERSION || 'v1';
 
 app.get('/', (req, res) => {
@@ -358,12 +350,7 @@ app.listen(port, () => {
 });
 ```
 
----
-
-## 2️⃣ Dockerfile
-
-**📄 Dockerfile**
-
+✅ Dockerfile:
 ```Dockerfile
 FROM node:18
 WORKDIR /app
@@ -373,22 +360,7 @@ ENV VERSION=v1
 CMD ["node", "app.js"]
 ```
 
----
-
-## 3️⃣ Helm Chart
-
-### 📄 Chart.yaml
-
-```yaml
-apiVersion: v2
-name: canary-app
-version: 0.1.0
-```
-
----
-
-### 📄 values.yaml
-
+✅ values.yaml
 ```yaml
 app:
   name: canary-app
@@ -399,10 +371,7 @@ app:
   version: v1
 ```
 
----
-
-### 📄 templates/deployment.yaml
-
+✅ templates/deployment.yaml
 ```yaml
 apiVersion: apps/v1
 kind: Deployment
@@ -433,10 +402,7 @@ spec:
               value: "{{ .Values.app.version }}"
 ```
 
----
-
-### 📄 templates/service.yaml
-
+✅ templates/service.yaml
 ```yaml
 apiVersion: v1
 kind: Service
@@ -450,10 +416,7 @@ spec:
       targetPort: {{ .Values.app.port }}
 ```
 
----
-
-### 📄 templates/destinationrule.yaml
-
+✅ templates/destinationrule.yaml
 ```yaml
 apiVersion: networking.istio.io/v1alpha3
 kind: DestinationRule
@@ -470,10 +433,7 @@ spec:
         version: v2
 ```
 
----
-
-### 📄 templates/virtualservice.yaml
-
+✅ templates/virtualservice.yaml
 ```yaml
 apiVersion: networking.istio.io/v1alpha3
 kind: VirtualService
@@ -495,6 +455,86 @@ spec:
             subset: v2
           weight: 10
 ```
+
+✅ argorollout.yaml
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: canary-app-rollout
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: canary-app
+  template:
+    metadata:
+      labels:
+        app: canary-app
+        version: v2
+    spec:
+      containers:
+      - name: canary-app
+        image: your-dockerhub-user/canary-app:v2
+        ports:
+        - containerPort: 8080
+        env:
+        - name: VERSION
+          value: "v2"
+  strategy:
+    canary:
+      trafficRouting:
+        istio:
+          virtualService:
+            name: canary-app
+            routes:
+              - http
+          destinationRule:
+            name: canary-app
+            canarySubsetName: v2
+            stableSubsetName: v1
+      steps:
+        - setWeight: 20
+        - pause: {duration: 10s}
+        - setWeight: 100
+  analysis:
+    templates:
+      - templateName: success-rate-check
+    args:
+      - name: service
+        value: canary-app
+```
+
+✅ AnalysisTemplate pentru Prometheus
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: success-rate-check
+spec:
+  metrics:
+    - name: success-rate
+      interval: 30s
+      successCondition: result[0] >= 0.95
+      failureLimit: 3
+      provider:
+        prometheus:
+          address: http://prometheus.istio-system:9090
+          query: |
+            sum(rate(http_requests_total{status=~"2.."}[1m])) /
+            sum(rate(http_requests_total[1m]))
+```
+
+✅ Fortio (pentru generare trafic):
+```bash
+kubectl run -n istio-system fortio --image=fortio/fortio -it --rm -- /usr/bin/fortio load -t 30s -qps 5 http://<INGRESS-IP>/
+```
+
+Înlocuiește `<INGRESS-IP>` cu IP-ul obținut de la:
+```bash
+kubectl get svc istio-ingressgateway -n istio-system
+```
+
 
 
 
