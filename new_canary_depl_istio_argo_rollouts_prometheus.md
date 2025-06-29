@@ -37,9 +37,28 @@ kubectl create ns argo-rollouts
 kubectl apply -n argo-rollouts -f https://github.com/argoproj/argo-rollouts/releases/latest/download/install.yaml
 
 kubectl apply -n argo-rollouts -f https://github.com/argoproj/argo-rollouts/releases/latest/download/dashboard-install.yaml
+```
 
+✅ Acces local doar pe localhost . ➡️ Această comandă ascultă doar pe 127.0.0.1 (nu merge dacă încerci să accesezi de pe alt device sau VM).
+```
 kubectl -n argo-rollouts port-forward deployment/argo-rollouts-dashboard 3100:3100
 ```
+
+✅ Acces din rețea (ex: de pe alt PC sau Mac către VM)
+Comandă cu --address:
+```
+kubectl -n argo-rollouts port-forward deployment/argo-rollouts-dashboard 3100:3100 --address 0.0.0.0
+
+```
+➡️ Acum dashboardul e accesibil pe:
+(ex: 192.168.1.123 → acces de pe Mac la http://192.168.1.123:3100/rollouts)
+
+```
+http://<ip_local_VM>:3100/rollouts
+ip a | grep inet
+```
+
+
 🔗 Deschide: [http://localhost:3100/rollouts](http://localhost:3100/rollouts)
 
 ---
