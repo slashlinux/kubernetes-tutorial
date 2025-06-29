@@ -513,3 +513,126 @@ spec:
 * [https://flagger.app/](https://flagger.app/)
 * [https://prometheus.io/](https://prometheus.io/)
 * [https://fortio.org/](https://fortio.org/)
+* 
+
+
+## 3️⃣ Create Istio routing components
+
+### DestinationRule
+
+```yaml
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: demo-rollout
+spec:
+  host: demo-rollout
+  subsets:
+    - name: stable
+      labels:
+        version: stable
+    - name: canary
+      labels:
+        version: canary
+```
+
+### VirtualService
+
+```yaml
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: demo-rollout
+spec:
+  hosts:
+    - demo-rollout
+  http:
+    - route:
+        - destination:
+            host: demo-rollout
+            subset: stable
+          weight: 100
+        - destination:
+            host: demo-rollout
+            subset: canary
+          weight: 0
+```
+
+---
+
+## 4️⃣ Create the Rollout with `trafficRouting: istio`
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: demo-rollout
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: demo-rollout
+  template:
+    metadata:
+      labels:
+        app: demo-rollout
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.27
+        ports:
+        - containerPort: 80
+  strategy:
+    canary:
+      trafficRouting:
+        istio:
+          virtualService:
+            name: demo-rollout
+            routes:
+              - http
+          destinationRule:
+            name: demo-rollout
+            canarySubsetName: canary
+            stableSubsetName: stable
+      steps:
+        - setWeight: 20
+        - pause: {duration: 10s}
+        - setWeight: 100
+```
+
+---
+
+## 🧪 Test Rollout
+
+```bash
+kubectl argo rollouts get rollout demo-rollout -w
+```
+
+---
+
+## 🌐 Access via Istio IngressGateway
+
+Expose via port-forward (for testing):
+
+```bash
+kubectl -n argo-rollouts port-forward deployment/argo-rollouts-dashboard --address 0.0.0.0 3100:3100
+kubectl port-forward svc/istio-ingressgateway -n istio-system 8080:80
+```
+
+Then access:
+
+```
+http://localhost:8080/
+```
+
+---
+
+## ✅ Notes
+
+- Make sure app and service are named `demo-rollout`
+- Service must point to pods with `version: stable/canary` labels
+
+---
+
+Happy Canary Deploying with Istio + Argo! 🎯
+
