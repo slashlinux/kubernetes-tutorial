@@ -505,6 +505,12 @@ spec:
         value: canary-app
 ```
 
+✅ Instalare prometheus:
+
+```
+kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.20/samples/addons/prometheus.yaml
+
+```
 ✅ templates/analysistemplate_prometheus.yaml
 ```yaml
 apiVersion: argoproj.io/v1alpha1
